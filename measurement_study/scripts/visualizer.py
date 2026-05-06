@@ -22,11 +22,11 @@ stratum_plot = (
     df["ntp_stratum"]
     .value_counts()
     .plot(
-        kind="pie", autopct="%.2f%%", fontsize=20, pctdistance=1.2, labeldistance=None
+        kind="pie", autopct="%.2f%%", fontsize=30, pctdistance=1.2, labeldistance=None
     )
 )
-stratum_plot.set_title("stratum", fontsize=20)
-plt.legend(fontsize=20, loc="upper right", bbox_to_anchor=(1.1, 1))
+stratum_plot.set_title("stratum", fontsize=30)
+plt.legend(fontsize=30, loc="upper right", bbox_to_anchor=(1.14, 1.2))
 plt.show()
 
 # Then, process data of the used NTP version
@@ -35,11 +35,11 @@ version_plot = (
     df["ntp_version"]
     .value_counts()
     .plot(
-        kind="pie", autopct="%.2f%%", fontsize=20, pctdistance=1.2, labeldistance=None
+        kind="pie", autopct="%.2f%%", fontsize=30, pctdistance=1.2, labeldistance=None
     )
 )
-version_plot.set_title("NTP version", fontsize=20)
-plt.legend(fontsize=20, loc="upper right", bbox_to_anchor=(1.1, 1))
+version_plot.set_title("NTP version", fontsize=30)
+plt.legend(fontsize=30, loc="upper right", bbox_to_anchor=(1.148, 1.1))
 plt.show()
 
 # Lastly, show data concerning the commands
