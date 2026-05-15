@@ -19,9 +19,11 @@ https://github.com/SRodi/xdp-ddos-protect
 struct rate_limit_entry {
     __u64 last_update; // Timestamp of the last update
     __u32 packet_count; // Packet count within the time window
+    __u64 packet_blocked; // Total packet count blocked from this host
 };
 
 BPF_HASH(rate_limit_map, __u32, struct rate_limit_entry, 1024);
+BPF_HASH(exceptions_map, __u32, __u8, 1024);
 
 int ddos_protection(struct xdp_md *ctx) {
 
@@ -65,6 +67,12 @@ int ddos_protection(struct xdp_md *ctx) {
     // Convert source IP from network to host byte order
     __u32 src_ip = __builtin_bswap32(iph->saddr);
     
+    // Ignore violations if present in the list of exceptions
+    __u8 *blocked = exceptions_map.lookup(&src_ip);
+    if (blocked) {
+        return XDP_PASS;
+    }
+
     // Lookup rate limit entry for this IP
     struct rate_limit_entry *entry = rate_limit_map.lookup(&src_ip);
     
@@ -76,8 +84,7 @@ int ddos_protection(struct xdp_md *ctx) {
         if (current_time - entry->last_update < TIME_WINDOW_NS) {
             entry->packet_count++;
             if (entry->packet_count > THRESHOLD) {
-                bpf_trace_printk("Blocked packet from: %u", src_ip); // Debug message to log a blocked packet. TODO: Remove debug message
-                return XDP_DROP; // Drop packet if rate exceeds threshold
+                entry->packet_blocked++; //Increment the counter for blocked packets
             }
         } else {
             // New time window, reset counter
@@ -91,10 +98,10 @@ int ddos_protection(struct xdp_md *ctx) {
         __builtin_memset(&new_entry, 0, sizeof(new_entry));
         new_entry.last_update = current_time;
         new_entry.packet_count = 1;
+        new_entry.packet_blocked = 0;
         if (rate_limit_map.update(&src_ip, &new_entry) != 0) {
             return XDP_ABORTED; // Handle error if update fails
         }
-        bpf_trace_printk("New NTP peer: %u", src_ip); // Debug message to log a new NTP peer. TODO: Visualize this in a better way. Maybe a refreshing table?
     }
     return XDP_PASS; // Allow packet if under threshold   
 }
