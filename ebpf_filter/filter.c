@@ -30,6 +30,8 @@ int ddos_protection(struct xdp_md *ctx) {
     void *data_end = (void *)(long)ctx->data_end;
     void *data = (void *)(long)ctx->data;
 
+    __u8 drop_flag = 0;
+
     // Parse Ethernet header
     struct ethhdr *eth = data;
 
@@ -64,6 +66,21 @@ int ddos_protection(struct xdp_md *ctx) {
         udp->dest   != __constant_htons(NTP_PORT))
         return XDP_PASS;
     
+    // Parse NTP header
+    __u8 *ntp = (void *)(udp + 1);
+
+    // Check if UDP messages is large enough to contain NTP message
+    if ((void *)(ntp + 1) > data_end)
+        return XDP_PASS;
+
+
+    //Extract mode of NTP message
+    __u8 ntp_mode = *ntp & 0x07;
+
+    //Mark mode 6 packets for DROP action
+    if (ntp_mode == 6)
+        drop_flag = 1;
+
     // Convert source IP from network to host byte order
     __u32 src_ip = __builtin_bswap32(iph->saddr);
     
@@ -85,12 +102,18 @@ int ddos_protection(struct xdp_md *ctx) {
             entry->packet_count++;
             if (entry->packet_count > THRESHOLD) {
                 entry->packet_blocked++; //Increment the counter for blocked packets
+                return XDP_DROP;
             }
         } else {
             // New time window, reset counter
             entry->last_update = current_time;
             entry->packet_count = 1;
         }
+        // After handling entries, previous checks maybe need to drop it regardless of threshhold
+        if (drop_flag == 1) {
+            entry->packet_blocked++;
+        return XDP_DROP;
+    }
     } else {
         // Initialize rate limit entry for new IP
         struct rate_limit_entry new_entry;
@@ -98,9 +121,16 @@ int ddos_protection(struct xdp_md *ctx) {
         __builtin_memset(&new_entry, 0, sizeof(new_entry));
         new_entry.last_update = current_time;
         new_entry.packet_count = 1;
-        new_entry.packet_blocked = 0;
+        if (drop_flag == 1){
+            new_entry.packet_blocked = 1;
+        } else {
+            new_entry.packet_blocked = 0;
+        }
         if (rate_limit_map.update(&src_ip, &new_entry) != 0) {
             return XDP_ABORTED; // Handle error if update fails
+        }
+        if (drop_flag == 1) {
+            return XDP_DROP;
         }
     }
     return XDP_PASS; // Allow packet if under threshold   

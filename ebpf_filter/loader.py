@@ -5,7 +5,7 @@ from socket import inet_ntoa,inet_aton
 from curses import wrapper,curs_set
 from ctypes import c_uint32,c_uint8
 
-# A simple loader for the eBPF program included in this repository using BCC.
+# A loader for the eBPF program included in this repository using BCC.
 # Currently, the interface is hardcoded. This will get an update soon.
 
 iface = "docker0"
@@ -56,5 +56,11 @@ def main(stdscr):
         pass
     finally:
         cleanup(stdscr)
+
+if len(sys.argv) != 2:
+    print("Error: wrong number of arguments")
+    sys.exit(0)
+
+iface = sys.argv[1]
 
 wrapper(main)
