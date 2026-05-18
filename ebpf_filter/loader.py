@@ -5,12 +5,19 @@ from socket import inet_ntoa,inet_aton
 from curses import wrapper,curs_set
 from ctypes import c_uint32,c_uint8
 
-# A loader for the eBPF program included in this repository using BCC.
-# Currently, the interface is hardcoded. This will get an update soon.
+# A loader for the NTP DDoS protection eBPF program included in this repository using BCC.
+# It takes 1 argument, which is the name of the intended network interface.
+# An additional list of exceptions for this filter can be set in the "exceptions.conf" file.
+# This needs the python BCC interface, which can be aquired from their 
+# Github repository or by installing the dedicated package shipped with 
+# most common Linux distributions. Examples for references to these are:
+#
+# Github: https://github.com/iovisor/bcc
+# Debian: https://packages.debian.org/sid/python3-bpfcc
+# Arch: https://archlinux.org/packages/extra/x86_64/python-bcc/
+# RHEL: https://pkgs.org/download/python3-bcc
 
-iface = "docker0"
-
-b = BPF(src_file="ebpf_filter/filter.c")
+b = BPF(src_file=f"{os.path.dirname(__file__)}/filter.c")
 fx = b.load_func("ddos_protection", BPF.XDP)
 
 def cleanup(stdscr):
