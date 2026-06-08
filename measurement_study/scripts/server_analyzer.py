@@ -107,6 +107,13 @@ def check_country(ip: str):
     except Exception:
         return "unknown"
 
+def check_country_iso(ip: str):
+    try:
+        response = location_db_reader.country(ip)
+        return response.country.iso_code
+    except Exception:
+        return "unknown"
+
 
 if __name__ == "__main__":
     input_df = read_csv("./measurement_study/data/ntp_server_list.csv", index_col=0)
@@ -121,6 +128,7 @@ if __name__ == "__main__":
             "command_rv": [],
             "command_pe": [],
             "country": [],
+            "iso_code": []
         }
     )
     for i, row in input_df.iterrows():
@@ -136,6 +144,7 @@ if __name__ == "__main__":
             "command_rv": checks.get("rv"),
             "command_pe": checks.get("pe"),
             "country": check_country(str(row["ip"])),
+            "iso_code": check_country_iso(str(row["ip"]))
         }
         output_df.loc[len(output_df)] = new_data
     output_df.to_csv("./measurement_study/data/analyzed_servers.csv")
