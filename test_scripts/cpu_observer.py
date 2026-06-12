@@ -45,7 +45,7 @@ def visualize_core_usages(df, output_dir):
     plt.grid(True)
     plt.legend(ncol=2)
     plt.tight_layout()
-    plt.savefig(f"{output_dir}core_usages.png")
+    plt.savefig(f"{output_dir}core_usages.pdf")
     plt.close()
 
 
@@ -69,7 +69,7 @@ def visualize_averages(df, output_dir):
     plt.ylim(0, ylim)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig(f"{output_dir}core_averages.png")
+    plt.savefig(f"{output_dir}core_averages.pdf")
     plt.close()
 
 
