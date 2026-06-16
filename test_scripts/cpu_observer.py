@@ -1,8 +1,11 @@
 from time import time
-from os.path import dirname
+from os.path import dirname, isfile
 import psutil
 import pandas as pd
 import matplotlib.pyplot as plt
+import subprocess
+import os
+import matplotlib as mpl
 
 # Script to monitor the cpu of the system by core. It will output the recorded data as a csv file 
 # and two images containing an over-time and averages visualization. This script expects a "data" 
@@ -14,8 +17,12 @@ def observe():
     try:
         while True:
             delta_time = round(time(),2) - start_time
+            cpu_usage = psutil.cpu_percent(interval=0.25)
             core_usages = psutil.cpu_percent(interval=0.25, percpu=True)
-            row = {"delta_time": round(delta_time, 2)}
+            row = {
+                "delta_time": round(delta_time, 1),
+                "cpu_percent": cpu_usage
+            }
             for i, usage in enumerate(core_usages):
                 row[f"core_{i}_percent"] = usage
             data.append(row)
@@ -72,17 +79,47 @@ def visualize_averages(df, output_dir):
     plt.savefig(f"{output_dir}core_averages.pdf")
     plt.close()
 
+def save_perf(data,output_dir):
+    output = []
+    for i,line in enumerate(data.splitlines()):
+        words = line.split()
+        if i == 0:
+            output.append(f"time:{words[2]}")
+        output.append(f"{words[1]}:{words[0]}")
+    with open(f"{output_dir}perf.txt","a") as f:
+        for line in output:
+            f.write(f"{line}\n")
+
+def cleanup(output_dir):
+    if isfile(f"{output_dir}cpu_usage.csv"):
+        os.remove(f"{output_dir}cpu_usage.csv")
+    if isfile(f"{output_dir}core_usages.pdf"):
+        os.remove(f"{output_dir}core_usages.pdf")
+    if isfile(f"{output_dir}core_averages.pdf"):
+        os.remove(f"{output_dir}core_averages.pdf")
+    if isfile(f"{output_dir}perf.txt"):
+        os.remove(f"{output_dir}perf.txt")
 
 def main():
-    print("Started observer. Stop with CTRL-C.")
-    df = observe()
-    print("\nSuccessfully stopped observer. Calculating and outputting results...")
     data_dir = f"{dirname(__file__)}/data/"
+    cleanup(data_dir) # Clear previous attempts
+    print("Started observer. Stop with CTRL-C.")
+    perf_process = subprocess.Popen(
+        ["perf","stat","-a", "-e", "cycles,instructions","-x"," "],
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    df = observe()
+    perf_process.send_signal(subprocess.signal.SIGINT)
+    print("\nSuccessfully stopped observer. Calculating and outputting results...")
     df.to_csv(f"{data_dir}cpu_usage.csv", index=False)
     visualize_core_usages(df, data_dir)
     visualize_averages(df, data_dir)
+    _, perf_output = perf_process.communicate()
+    save_perf(perf_output,data_dir)
     print("Completed outputting. Exiting...")
 
 
 if __name__ == "__main__":
+    mpl.use("Agg")
     main()
