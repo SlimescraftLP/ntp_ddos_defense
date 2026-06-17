@@ -56,7 +56,7 @@ def main(stdscr):
             stdscr.addstr("\n")
             map_output = b["rate_limit_map"].items()
             for item in map_output:
-                stdscr.addstr(f"{inet_ntoa(pack("!I", item[0].value))}\t|\t {item[1].packet_blocked}\n")
+                stdscr.addstr(f"{inet_ntoa(pack('!I', item[0].value))}\t|\t {item[1].packet_blocked}\n")
             stdscr.refresh()
             time.sleep(0.25)
     except KeyboardInterrupt:
