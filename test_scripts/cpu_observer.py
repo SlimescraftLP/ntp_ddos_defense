@@ -6,28 +6,42 @@ import matplotlib.pyplot as plt
 import subprocess
 import os
 import matplotlib as mpl
+import socket
+import threading
 
 # Script to monitor the cpu of the system by core. It will output the recorded data as a csv file 
-# and two images containing an over-time and averages visualization. This script expects a "data" 
-# directory in the same location it is placed in.
+# and two images containing an over-time and averages visualization in addition to a textfile 
+# containing cpu cycles and instructions. This script expects a "data" directory in the same 
+# location it is placed in.
+
+observing_flag = threading.Event()
+stop_flag = threading.Event()
+
+def control_thread():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("0.0.0.0", 9999))
+    while not stop_flag.is_set():
+        data, addr = sock.recvfrom(1024)
+        msg = data.decode()
+        if msg == "START":
+            observing_flag.set()
+        if msg == "STOP":
+            observing_flag.clear()
 
 def observe():
     data = []
     start_time = round(time(),2)
-    try:
-        while True:
-            delta_time = round(time(),2) - start_time
-            cpu_usage = psutil.cpu_percent(interval=0.25)
-            core_usages = psutil.cpu_percent(interval=0.25, percpu=True)
-            row = {
-                "delta_time": round(delta_time, 1),
-                "cpu_percent": cpu_usage
-            }
-            for i, usage in enumerate(core_usages):
-                row[f"core_{i}_percent"] = usage
-            data.append(row)
-    except KeyboardInterrupt:
-        pass
+    while observing_flag.is_set():
+        delta_time = round(time(),2) - start_time
+        cpu_usage = psutil.cpu_percent(interval=0.25)
+        core_usages = psutil.cpu_percent(interval=0.25, percpu=True)
+        row = {
+            "delta_time": round(delta_time, 1),
+            "cpu_percent": cpu_usage
+        }
+        for i, usage in enumerate(core_usages):
+            row[f"core_{i}_percent"] = usage
+        data.append(row)
     return pd.DataFrame(data)
 
 def visualize_core_usages(df, output_dir):
@@ -103,7 +117,13 @@ def cleanup(output_dir):
 def main():
     data_dir = f"{dirname(__file__)}/data/"
     cleanup(data_dir) # Clear previous attempts
-    print("Started observer. Stop with CTRL-C.")
+    thread = threading.Thread(target=control_thread, daemon=True) 
+    thread.start()
+    print("Waiting for start signal...")
+    while True:
+        if observing_flag.is_set():
+            break
+    print("Started observer. Running until stop signal is received.")
     perf_process = subprocess.Popen(
         ["perf","stat","-a", "-e", "cycles,instructions","-x"," "],
         stderr=subprocess.PIPE,
@@ -111,7 +131,8 @@ def main():
     )
     df = observe()
     perf_process.send_signal(subprocess.signal.SIGINT)
-    print("\nSuccessfully stopped observer. Calculating and outputting results...")
+    print("Successfully stopped observer. Calculating and outputting results...")
+    stop_flag.set()
     df.to_csv(f"{data_dir}cpu_usage.csv", index=False)
     visualize_core_usages(df, data_dir)
     visualize_averages(df, data_dir)
