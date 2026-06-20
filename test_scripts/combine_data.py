@@ -15,14 +15,14 @@ def draw_cpu_comparison(df1,df2,output_dir):
 
 def draw_cycle_comparison(dict1,dict2,output_dir):
     plt.figure(figsize=(5, 4))
-    plt.bar(["iptables","eBPF"], [(int(dict1["cycles"])/1e9),(int(dict1["cycles"])/1e9)])
+    plt.bar(["iptables","eBPF"], [(int(dict1["cycles"])/1e9),(int(dict2["cycles"])/1e9)])
     plt.ylabel('Cycles in billions')
     plt.title('Comparison between CPU cycles')
     plt.savefig(f"{output_dir}combined_cycle.pdf")
 
 def draw_instruction_comparison(dict1,dict2,output_dir):
     plt.figure(figsize=(5, 4))
-    plt.bar(["iptables","eBPF"], [(int(dict1["instructions"])/1e9),(int(dict1["instructions"])/1e9)])
+    plt.bar(["iptables","eBPF"], [(int(dict1["instructions"])/1e9),(int(dict2["instructions"])/1e9)])
     plt.ylabel('Instructions in billions')
     plt.title('Comparison between CPU instructions')
     plt.savefig(f"{output_dir}combined_instruction.pdf")
